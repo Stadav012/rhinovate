@@ -8,6 +8,8 @@ interface NoseEditorControlsProps {
   adjustNoseTip: (amount: number) => void;
   adjustNostrilWidth: (amount: number) => void;
   selectedVertex: number | null;
+  toggleAnatomicalMeshVisibility?: () => void;
+  anatomicalMeshVisible?: boolean;
 }
 
 const NoseEditorControls = ({
@@ -17,115 +19,172 @@ const NoseEditorControls = ({
   adjustNoseBridge,
   adjustNoseTip,
   adjustNostrilWidth,
-  selectedVertex
+  selectedVertex,
+  toggleAnatomicalMeshVisibility,
+  anatomicalMeshVisible = true,
 }: NoseEditorControlsProps) => {
-  const [bridgeAmount, setBridgeAmount] = useState<number>(0);
-  const [tipAmount, setTipAmount] = useState<number>(0);
-  const [nostrilAmount, setNostrilAmount] = useState<number>(0);
+  const [bridgeValue, setBridgeValue] = useState(0);
+  const [tipValue, setTipValue] = useState(0);
+  const [nostrilValue, setNostrilValue] = useState(0);
 
   const handleBridgeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value);
-    setBridgeAmount(value);
-    adjustNoseBridge(value / 50); // Scale down for more precise control
+    setBridgeValue(value);
+    adjustNoseBridge(value);
   };
 
   const handleTipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value);
-    setTipAmount(value);
-    adjustNoseTip(value / 50); // Scale down for more precise control
+    setTipValue(value);
+    adjustNoseTip(value);
   };
 
   const handleNostrilChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value);
-    setNostrilAmount(value);
-    adjustNostrilWidth(value / 50); // Scale down for more precise control
+    setNostrilValue(value);
+    adjustNostrilWidth(value);
+  };
+
+  const handleReset = () => {
+    setBridgeValue(0);
+    setTipValue(0);
+    setNostrilValue(0);
+    resetNose();
   };
 
   return (
     <div className="nose-editor-controls">
-      <div className="control-header">
-        <h3>Rhinoplasty Planning Tools</h3>
-        <button 
+      <h2 className="controls-title">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 17v.5"></path>
+          <path d="M10 5v.5"></path>
+          <path d="M14 5v.5"></path>
+          <path d="M7.3 10h9.4a2 2 0 0 1 1.7 3l-4.8 7H10.4a2 2 0 0 1-1.7-1l-4-6a2 2 0 0 1 0-2l4-6a2 2 0 0 1 1.7-1h7.4a2 2 0 0 1 1.7 1l4 6a2 2 0 0 1 0 2"></path>
+        </svg>
+        Nose Editor Controls
+      </h2>
+      
+      <div className="controls-section edit-mode-section">
+        <button
           className={`edit-mode-toggle ${isEditMode ? 'active' : ''}`}
           onClick={() => setIsEditMode(!isEditMode)}
         >
-          {isEditMode ? 'Exit Edit Mode' : 'Enter Edit Mode'}
+          {isEditMode ? (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              Exit Edit Mode
+            </>
+          ) : (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              Enter Edit Mode
+            </>
+          )}
         </button>
-      </div>
-
-      <div className="control-section">
-        <p className="section-title">Predefined Adjustments</p>
         
-        <div className="control-group">
-          <label htmlFor="bridge-slider">Bridge Height:</label>
+        {isEditMode && (
+          <div className="edit-mode-instructions">
+            Click and drag on the nose to modify its shape
+          </div>
+        )}
+        
+        {isEditMode && toggleAnatomicalMeshVisibility && (
+          <button
+            className={`toggle-button ${anatomicalMeshVisible ? 'active' : ''}`}
+            onClick={toggleAnatomicalMeshVisibility}
+            style={{ marginTop: '10px' }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            {anatomicalMeshVisible ? 'Hide Anatomical Mesh' : 'Show Anatomical Mesh'}
+          </button>
+        )}
+      </div>
+
+      {selectedVertex !== null && (
+        <div className="controls-section">
+          <div className="selected-vertex-info">
+            <span className="vertex-label">Selected Vertex:</span>
+            <span className="vertex-id">{selectedVertex}</span>
+          </div>
+        </div>
+      )}
+
+      <div className="controls-section">
+        <h3 className="controls-section-title">Rhinoplasty Adjustments</h3>
+        
+        <div className="slider-container">
+          <div className="slider-label">
+            <span className="slider-name">Bridge Height</span>
+            <span className="slider-value">{bridgeValue.toFixed(2)}</span>
+          </div>
           <input
-            id="bridge-slider"
             type="range"
-            min="-10"
-            max="10"
-            step="0.1"
-            value={bridgeAmount}
+            min="-1"
+            max="1"
+            step="0.01"
+            value={bridgeValue}
             onChange={handleBridgeChange}
-            disabled={!isEditMode}
+            className="slider"
           />
-          <span className="value-display">{bridgeAmount.toFixed(1)}</span>
         </div>
-
-        <div className="control-group">
-          <label htmlFor="tip-slider">Tip Projection:</label>
+        
+        <div className="slider-container">
+          <div className="slider-label">
+            <span className="slider-name">Tip Projection</span>
+            <span className="slider-value">{tipValue.toFixed(2)}</span>
+          </div>
           <input
-            id="tip-slider"
             type="range"
-            min="-10"
-            max="10"
-            step="0.1"
-            value={tipAmount}
+            min="-1"
+            max="1"
+            step="0.01"
+            value={tipValue}
             onChange={handleTipChange}
-            disabled={!isEditMode}
+            className="slider"
           />
-          <span className="value-display">{tipAmount.toFixed(1)}</span>
         </div>
-
-        <div className="control-group">
-          <label htmlFor="nostril-slider">Nostril Width:</label>
+        
+        <div className="slider-container">
+          <div className="slider-label">
+            <span className="slider-name">Nostril Width</span>
+            <span className="slider-value">{nostrilValue.toFixed(2)}</span>
+          </div>
           <input
-            id="nostril-slider"
             type="range"
-            min="-10"
-            max="10"
-            step="0.1"
-            value={nostrilAmount}
+            min="-1"
+            max="1"
+            step="0.01"
+            value={nostrilValue}
             onChange={handleNostrilChange}
-            disabled={!isEditMode}
+            className="slider"
           />
-          <span className="value-display">{nostrilAmount.toFixed(1)}</span>
         </div>
       </div>
-
-      <div className="control-section">
-        <p className="section-title">Manual Editing</p>
-        <p className="instruction-text">
-          {isEditMode 
-            ? 'Click on the nose area to select and drag vertices' 
-            : 'Enable edit mode to manually edit vertices'}
-        </p>
-        <p className="selected-info">
-          {selectedVertex !== null 
-            ? `Selected vertex: ${selectedVertex}` 
-            : 'No vertex selected'}
-        </p>
-      </div>
-
-      <div className="control-actions">
-        <button 
-          className="reset-button" 
-          onClick={resetNose}
-          disabled={!isEditMode}
-        >
+      
+      <div className="button-group">
+        <button className="button button-danger" onClick={handleReset}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+            <path d="M3 3v5h5"></path>
+          </svg>
           Reset Changes
         </button>
-        <button className="save-button" disabled={!isEditMode}>
-          Save Changes
+        <button className="button button-success">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          Save Model
         </button>
       </div>
     </div>
