@@ -296,6 +296,8 @@ const ModelViewer = ({ model }: ModelViewerProps) => {
             adjustNoseTip={noseEditorFunctions.adjustNoseTip}
             adjustNostrilWidth={noseEditorFunctions.adjustNostrilWidth}
             selectedVertex={noseEditorFunctions.selectedVertex}
+            toggleMeshVisibility={noseEditorFunctions.toggleAnatomicalMeshVisibility}
+            anatomicalMeshVisible={noseEditorFunctions.anatomicalMeshVisible}
           />
         </div>
       )}

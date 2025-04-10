@@ -1,0 +1,136 @@
+.nose-editor-controls {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  width: 300px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  position: fixed;
+  right: 20px;
+  top: 20px;
+}
+
+.controls-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 20px;
+  font-size: 1.2em;
+  color: #333;
+}
+
+.controls-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.controls-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 15px;
+  font-size: 1em;
+  color: #444;
+}
+
+/* Toggle Container Styles */
+.toggle-container {
+  margin-bottom: 12px;
+}
+
+.toggle-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.toggle-label span {
+  color: #555;
+  font-size: 0.9em;
+}
+
+/* Toggle Switch Styles */
+.toggle-switch-wrapper {
+  position: relative;
+  width: 44px;
+  height: 24px;
+}
+
+.toggle-switch-checkbox {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.toggle-switch {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 24px;
+}
+
+.toggle-switch-slider {
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+.toggle-switch.active {
+  background-color: #2196F3;
+}
+
+.toggle-switch.active .toggle-switch-slider {
+  transform: translateX(20px);
+}
+
+/* Edit Mode Button Styles */
+.edit-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 15px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background-color 0.3s;
+}
+
+.edit-mode-toggle:hover {
+  background: #1976D2;
+}
+
+.edit-mode-toggle.active {
+  background: #f44336;
+}
+
+.edit-mode-toggle.active:hover {
+  background: #d32f2f;
+}
+
+.edit-mode-instructions {
+  margin-top: 10px;
+  padding: 8px;
+  background: rgba(33, 150, 243, 0.1);
+  border-radius: 4px;
+  font-size: 0.85em;
+  color: #666;
+}

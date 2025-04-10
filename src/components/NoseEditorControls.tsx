@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import './NoseEditorControls.css';
 
 interface NoseEditorControlsProps {
   isEditMode: boolean;
@@ -8,7 +9,8 @@ interface NoseEditorControlsProps {
   adjustNoseTip: (amount: number) => void;
   adjustNostrilWidth: (amount: number) => void;
   selectedVertex: number | null;
-  toggleAnatomicalMeshVisibility?: () => void;
+  // Props for mesh visibility
+  toggleMeshVisibility?: (region?: string) => void;
   anatomicalMeshVisible?: boolean;
 }
 
@@ -20,12 +22,15 @@ const NoseEditorControls = ({
   adjustNoseTip,
   adjustNostrilWidth,
   selectedVertex,
-  toggleAnatomicalMeshVisibility,
+  toggleMeshVisibility,
   anatomicalMeshVisible = true,
 }: NoseEditorControlsProps) => {
   const [bridgeValue, setBridgeValue] = useState(0);
   const [tipValue, setTipValue] = useState(0);
   const [nostrilValue, setNostrilValue] = useState(0);
+  
+  // State for mesh visibility toggles
+  const [showAllMeshes, setShowAllMeshes] = useState(anatomicalMeshVisible);
 
   const handleBridgeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value);
@@ -50,6 +55,55 @@ const NoseEditorControls = ({
     setTipValue(0);
     setNostrilValue(0);
     resetNose();
+  };
+  
+  // Handle toggling all meshes
+  const handleToggleAllMeshes = () => {
+    const newValue = !showAllMeshes;
+    setShowAllMeshes(newValue);
+    if (toggleMeshVisibility) {
+      // Toggle all meshes and update all region states
+      toggleMeshVisibility();
+      setRegionVisibility(prev => {
+        const newState = { ...prev };
+        Object.keys(newState).forEach(key => {
+          newState[key as keyof typeof prev] = newValue;
+        });
+        return newState;
+      });
+    }
+  };
+
+  // Add individual region toggles
+  const [regionVisibility, setRegionVisibility] = useState({
+    bridge: true,
+    tip: true,
+    leftNostril: true,
+    rightNostril: true,
+    leftSidewall: true,
+    rightSidewall: true,
+    columella: true
+  });
+
+  const handleToggleRegion = (region: string) => {
+    if (toggleMeshVisibility) {
+      // Update local state for the specific region
+      const newRegionState = !regionVisibility[region as keyof typeof regionVisibility];
+      setRegionVisibility(prev => ({
+        ...prev,
+        [region]: newRegionState
+      }));
+      
+      // Call the toggle function with the region name
+      toggleMeshVisibility(region);
+      
+      // Update showAllMeshes state based on all regions' visibility
+      const allRegionsVisible = Object.values({ 
+        ...regionVisibility, 
+        [region]: newRegionState 
+      }).every(visible => visible);
+      setShowAllMeshes(allRegionsVisible);
+    }
   };
 
   return (
@@ -93,20 +147,119 @@ const NoseEditorControls = ({
             Click and drag on the nose to modify its shape
           </div>
         )}
+      </div>
+
+      {/* Mesh Visibility Section */}
+      <div className="controls-section mesh-visibility-section">
+        <h3 className="controls-section-title">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          Mesh Visibility
+        </h3>
         
-        {isEditMode && toggleAnatomicalMeshVisibility && (
-          <button
-            className={`toggle-button ${anatomicalMeshVisible ? 'active' : ''}`}
-            onClick={toggleAnatomicalMeshVisibility}
-            style={{ marginTop: '10px' }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
-              <circle cx="12" cy="12" r="3"></circle>
-            </svg>
-            {anatomicalMeshVisible ? 'Hide Anatomical Mesh' : 'Show Anatomical Mesh'}
-          </button>
-        )}
+        <div className="toggle-container">
+          <label className="toggle-label">
+            <span>Show All Meshes</span>
+            <div className="toggle-switch-wrapper">
+              <input
+                type="checkbox"
+                checked={showAllMeshes}
+                onChange={handleToggleAllMeshes}
+                className="toggle-switch-checkbox"
+              />
+              <div className={`toggle-switch ${showAllMeshes ? 'active' : ''}`}>
+                <div className="toggle-switch-slider"></div>
+              </div>
+            </div>
+          </label>
+        </div>
+        
+        <div className="toggle-container">
+          <label className="toggle-label">
+            <span>Bridge</span>
+            <div className="toggle-switch-wrapper">
+              <input
+                type="checkbox"
+                checked={regionVisibility.bridge}
+                onChange={() => handleToggleRegion('bridge')}
+                className="toggle-switch-checkbox"
+              />
+              <div className={`toggle-switch ${regionVisibility.bridge ? 'active' : ''}`}>
+                <div className="toggle-switch-slider"></div>
+              </div>
+            </div>
+          </label>
+        </div>
+        
+        <div className="toggle-container">
+          <label className="toggle-label">
+            <span>Tip</span>
+            <div className="toggle-switch-wrapper">
+              <input
+                type="checkbox"
+                checked={regionVisibility.tip}
+                onChange={() => handleToggleRegion('tip')}
+                className="toggle-switch-checkbox"
+              />
+              <div className={`toggle-switch ${regionVisibility.tip ? 'active' : ''}`}>
+                <div className="toggle-switch-slider"></div>
+              </div>
+            </div>
+          </label>
+        </div>
+        
+        <div className="toggle-container">
+          <label className="toggle-label">
+            <span>Left Nostril</span>
+            <div className="toggle-switch-wrapper">
+              <input
+                type="checkbox"
+                checked={regionVisibility.leftNostril}
+                onChange={() => handleToggleRegion('leftNostril')}
+                className="toggle-switch-checkbox"
+              />
+              <div className={`toggle-switch ${regionVisibility.leftNostril ? 'active' : ''}`}>
+                <div className="toggle-switch-slider"></div>
+              </div>
+            </div>
+          </label>
+        </div>
+        
+        <div className="toggle-container">
+          <label className="toggle-label">
+            <span>Right Nostril</span>
+            <div className="toggle-switch-wrapper">
+              <input
+                type="checkbox"
+                checked={regionVisibility.rightNostril}
+                onChange={() => handleToggleRegion('rightNostril')}
+                className="toggle-switch-checkbox"
+              />
+              <div className={`toggle-switch ${regionVisibility.rightNostril ? 'active' : ''}`}>
+                <div className="toggle-switch-slider"></div>
+              </div>
+            </div>
+          </label>
+        </div>
+        
+        <div className="toggle-container">
+          <label className="toggle-label">
+            <span>Columella</span>
+            <div className="toggle-switch-wrapper">
+              <input
+                type="checkbox"
+                checked={regionVisibility.columella}
+                onChange={() => handleToggleRegion('columella')}
+                className="toggle-switch-checkbox"
+              />
+              <div className={`toggle-switch ${regionVisibility.columella ? 'active' : ''}`}>
+                <div className="toggle-switch-slider"></div>
+              </div>
+            </div>
+          </label>
+        </div>
       </div>
 
       {selectedVertex !== null && (

@@ -34,6 +34,17 @@ const AnatomicalMeshEditor = ({ model, isEditMode, camera, scene }: AnatomicalMe
   const [isDragging, setIsDragging] = useState(false);
   const [anatomicalMeshVisible, setAnatomicalMeshVisible] = useState(true);
   
+  // Track visibility of individual regions
+  const [regionVisibility, setRegionVisibility] = useState<Record<NoseRegion, boolean>>({
+    bridge: true,
+    tip: true,
+    leftNostril: true,
+    rightNostril: true,
+    leftSidewall: true,
+    rightSidewall: true,
+    columella: true
+  });
+  
   // Find the nose mesh in the model
   useEffect(() => {
     console.log('AnatomicalMeshEditor: Model effect triggered, model =', !!model);
@@ -472,6 +483,9 @@ const AnatomicalMeshEditor = ({ model, isEditMode, camera, scene }: AnatomicalMe
     controlPoints.forEach(cp => {
       // Skip if no vertices in this region
       if (cp.vertexIndices.length === 0) return;
+      
+      // Skip if this region is set to be hidden
+      if (!regionVisibility[cp.region]) return;
       
       console.log(`Creating visualization for ${cp.region} with ${cp.vertexIndices.length} vertices`);
       
@@ -1014,29 +1028,86 @@ const AnatomicalMeshEditor = ({ model, isEditMode, camera, scene }: AnatomicalMe
   };
 
   // Toggle visibility of the anatomical mesh
-  const toggleAnatomicalMeshVisibility = () => {
-    const newVisibility = !anatomicalMeshVisible;
-    setAnatomicalMeshVisible(newVisibility);
-    
+  const toggleAnatomicalMeshVisibility = (region?: string) => {
     if (!scene) return;
     
-    // Toggle visibility of all region meshes (both solid and wireframe)
-    const regionMeshes = scene.children.filter(child => 
-      child.name && (
-        child.name.startsWith('anatomicalRegion-') ||
-        child.name.startsWith('anatomicalRegionWireframe-')
-      )
-    );
-    
-    regionMeshes.forEach(mesh => {
-      mesh.visible = newVisibility;
-    });
-    
-    // If turning visibility back on, ensure control points are still visible
-    if (newVisibility) {
-      controlPoints.forEach(cp => {
-        if (cp.mesh) cp.mesh.visible = true;
+    // If no region specified, toggle all meshes
+    if (!region) {
+      const newVisibility = !anatomicalMeshVisible;
+      setAnatomicalMeshVisible(newVisibility);
+      
+      // Update all region visibility states
+      const newRegionVisibility = {...regionVisibility};
+      Object.keys(newRegionVisibility).forEach(key => {
+        newRegionVisibility[key as NoseRegion] = newVisibility;
       });
+      setRegionVisibility(newRegionVisibility);
+      
+      // Toggle visibility of all region meshes (both solid and wireframe)
+      const regionMeshes = scene.children.filter(child => 
+        child.name && (
+          child.name.startsWith('anatomicalRegion-') ||
+          child.name.startsWith('anatomicalRegionWireframe-')
+        )
+      );
+      
+      regionMeshes.forEach(mesh => {
+        mesh.visible = newVisibility;
+      });
+      
+      // If turning visibility back on, ensure control points are still visible
+      if (newVisibility) {
+        controlPoints.forEach(cp => {
+          if (cp.mesh) cp.mesh.visible = true;
+        });
+      }
+    } 
+    // Toggle visibility of a specific region
+    else {
+      const regionKey = region as NoseRegion;
+      if (regionVisibility.hasOwnProperty(regionKey)) {
+        // Toggle this specific region's visibility
+        const newRegionVisibility = {...regionVisibility};
+        newRegionVisibility[regionKey] = !newRegionVisibility[regionKey];
+        setRegionVisibility(newRegionVisibility);
+        
+        // Find and toggle meshes for this specific region
+        const regionMeshes = scene.children.filter(child => 
+          child.name && (
+            child.name === `anatomicalRegion-${region}` ||
+            child.name === `anatomicalRegionWireframe-${region}`
+          )
+        );
+        
+        regionMeshes.forEach(mesh => {
+          mesh.visible = newRegionVisibility[regionKey];
+        });
+        
+        // Update the overall visibility state based on whether any regions are visible
+        const anyRegionVisible = Object.values(newRegionVisibility).some(visible => visible);
+        setAnatomicalMeshVisible(anyRegionVisible);
+        
+        // If this region has a control point, update its visibility too
+        const controlPoint = controlPoints.find(cp => cp.region === regionKey);
+        if (controlPoint && controlPoint.mesh) {
+          controlPoint.mesh.visible = newRegionVisibility[regionKey];
+        }
+      }
+    }
+    
+    // If we've changed visibility, recreate the visualizations
+    if (anatomicalMeshVisible) {
+      // Clean up existing visualizations
+      const regionMeshes = scene.children.filter(child => 
+        child.name && (
+          child.name.startsWith('anatomicalRegion-') ||
+          child.name.startsWith('anatomicalRegionWireframe-')
+        )
+      );
+      regionMeshes.forEach(mesh => scene.remove(mesh));
+      
+      // Recreate visualizations with current visibility settings
+      createAnatomicalRegionVisualizations(controlPoints);
     }
   };
 
@@ -1046,7 +1117,8 @@ const AnatomicalMeshEditor = ({ model, isEditMode, camera, scene }: AnatomicalMe
     selectedControlPoint,
     resetNose,
     toggleAnatomicalMeshVisibility,
-    anatomicalMeshVisible
+    anatomicalMeshVisible,
+    regionVisibility
   };
 };
 
