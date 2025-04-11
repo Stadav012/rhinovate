@@ -62,15 +62,7 @@ const NoseEditorControls = ({
     const newValue = !showAllMeshes;
     setShowAllMeshes(newValue);
     if (toggleMeshVisibility) {
-      // Toggle all meshes and update all region states
-      toggleMeshVisibility();
-      setRegionVisibility(prev => {
-        const newState = { ...prev };
-        Object.keys(newState).forEach(key => {
-          newState[key as keyof typeof prev] = newValue;
-        });
-        return newState;
-      });
+      toggleMeshVisibility(); // Toggle all meshes
     }
   };
 
@@ -88,21 +80,13 @@ const NoseEditorControls = ({
   const handleToggleRegion = (region: string) => {
     if (toggleMeshVisibility) {
       // Update local state for the specific region
-      const newRegionState = !regionVisibility[region as keyof typeof regionVisibility];
       setRegionVisibility(prev => ({
         ...prev,
-        [region]: newRegionState
+        [region]: !prev[region as keyof typeof prev]
       }));
       
       // Call the toggle function with the region name
       toggleMeshVisibility(region);
-      
-      // Update showAllMeshes state based on all regions' visibility
-      const allRegionsVisible = Object.values({ 
-        ...regionVisibility, 
-        [region]: newRegionState 
-      }).every(visible => visible);
-      setShowAllMeshes(allRegionsVisible);
     }
   };
 
