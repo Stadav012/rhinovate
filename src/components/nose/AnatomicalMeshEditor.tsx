@@ -53,37 +53,40 @@ const AnatomicalMeshEditor = ({ model, isEditMode, camera, scene }: AnatomicalMe
     
     console.log('AnatomicalMeshEditor: Searching for nose mesh in model');
     
-    let foundNoseMesh: Mesh | null = null;
+    let foundNoseMesh: THREE.Mesh | null = null;
     
     // Find the first mesh in the model
     model.traverse((child) => {
       if (child instanceof THREE.Mesh) {
-        console.log('AnatomicalMeshEditor: Found mesh:', child.name || 'unnamed mesh', 
-                    'visible:', child.visible, 
-                    'geometry vertices:', child.geometry.attributes.position?.count);
+        const meshChild = child as THREE.Mesh;
+        console.log('AnatomicalMeshEditor: Found mesh:', meshChild.name || 'unnamed mesh', 
+                    'visible:', meshChild.visible, 
+                    'geometry vertices:', meshChild.geometry.attributes.position?.count);
         
         if (!foundNoseMesh) {
-          foundNoseMesh = child;
+          foundNoseMesh = meshChild;
         }
       }
     });
     
     if (foundNoseMesh) {
-      console.log('AnatomicalMeshEditor: Setting nose mesh:', foundNoseMesh.name || 'unnamed mesh');
+      // Explicitly type cast to ensure TypeScript recognizes it correctly
+      const typedNoseMesh = foundNoseMesh as THREE.Mesh;
+      console.log('AnatomicalMeshEditor: Setting nose mesh:', typedNoseMesh.name || 'unnamed mesh');
       
       // Make sure the mesh is visible
-      foundNoseMesh.visible = true;
+      typedNoseMesh.visible = true;
       
       // Store the original geometry for reset functionality
-      if (foundNoseMesh.geometry instanceof THREE.BufferGeometry) {
-        const originalGeometryCopy = foundNoseMesh.geometry.clone();
+      if (typedNoseMesh.geometry instanceof THREE.BufferGeometry) {
+        const originalGeometryCopy = typedNoseMesh.geometry.clone();
         setOriginalGeometry(originalGeometryCopy);
         console.log('AnatomicalMeshEditor: Stored original geometry with', 
                     originalGeometryCopy.attributes.position.count, 'vertices');
       }
       
-      setNoseMesh(foundNoseMesh);
-      noseMeshRef.current = foundNoseMesh;
+      setNoseMesh(typedNoseMesh);
+      noseMeshRef.current = typedNoseMesh;
     } else {
       console.warn('AnatomicalMeshEditor: No mesh found in the model');
     }
@@ -666,10 +669,9 @@ const AnatomicalMeshEditor = ({ model, isEditMode, camera, scene }: AnatomicalMe
     const rect = canvas.getBoundingClientRect();
     
     // Calculate mouse position in normalized device coordinates
-    const mouse = new Vector3(
+    const mouse = new THREE.Vector2(
       ((event.clientX - rect.left) / rect.width) * 2 - 1,
-      -((event.clientY - rect.top) / rect.height) * 2 + 1,
-      0.5
+      -((event.clientY - rect.top) / rect.height) * 2 + 1
     );
     
     // Create a raycaster
@@ -708,10 +710,9 @@ const AnatomicalMeshEditor = ({ model, isEditMode, camera, scene }: AnatomicalMe
     const rect = canvas.getBoundingClientRect();
     
     // Calculate mouse position in normalized device coordinates
-    const mouse = new Vector3(
+    const mouse = new THREE.Vector2(
       ((event.clientX - rect.left) / rect.width) * 2 - 1,
-      -((event.clientY - rect.top) / rect.height) * 2 + 1,
-      0.5
+      -((event.clientY - rect.top) / rect.height) * 2 + 1
     );
     
     // Create a raycaster

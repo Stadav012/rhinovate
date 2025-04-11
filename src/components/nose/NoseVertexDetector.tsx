@@ -16,36 +16,39 @@ export const useNoseVertexDetector = ({ model, scene, isEditMode }: NoseVertexDe
     
     console.log('NoseVertexDetector: Searching for nose mesh in model');
     
-    let foundNoseMesh: Mesh | null = null;
+    let foundNoseMesh: THREE.Mesh | null = null;
     
     // Find the first mesh in the model
     model.traverse((child) => {
       if (child instanceof THREE.Mesh) {
-        console.log('NoseVertexDetector: Found mesh:', child.name || 'unnamed mesh', 
-                    'visible:', child.visible, 
-                    'geometry vertices:', child.geometry.attributes.position?.count);
+        const meshChild = child as THREE.Mesh;
+        console.log('NoseVertexDetector: Found mesh:', meshChild.name || 'unnamed mesh', 
+                    'visible:', meshChild.visible, 
+                    'geometry vertices:', meshChild.geometry.attributes.position?.count);
         
-        if (!foundNoseMesh) {
-          foundNoseMesh = child;
+        if (!foundNoseMesh && meshChild.geometry instanceof THREE.BufferGeometry) {
+          foundNoseMesh = meshChild;
         }
       }
     });
     
     if (foundNoseMesh) {
-      console.log('NoseVertexDetector: Setting nose mesh:', foundNoseMesh.name || 'unnamed mesh');
+      // Explicitly type cast to ensure TypeScript recognizes it correctly
+      const typedNoseMesh = foundNoseMesh as THREE.Mesh;
+      console.log('NoseVertexDetector: Setting nose mesh:', typedNoseMesh.name || 'unnamed mesh');
       
       // Make sure the mesh is visible
-      foundNoseMesh.visible = true;
+      typedNoseMesh.visible = true;
       
       // Store the original geometry for reset functionality
-      if (foundNoseMesh.geometry instanceof THREE.BufferGeometry) {
-        const originalGeometryCopy = foundNoseMesh.geometry.clone();
+      if (typedNoseMesh.geometry instanceof THREE.BufferGeometry) {
+        const originalGeometryCopy = typedNoseMesh.geometry.clone();
         setOriginalGeometry(originalGeometryCopy);
         console.log('NoseVertexDetector: Stored original geometry with', 
                     originalGeometryCopy.attributes.position.count, 'vertices');
       }
       
-      setNoseMesh(foundNoseMesh);
+      setNoseMesh(typedNoseMesh);
     } else {
       console.warn('NoseVertexDetector: No mesh found in the model');
     }

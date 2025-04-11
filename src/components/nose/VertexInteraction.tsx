@@ -1,61 +1,68 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Mesh, Vector3, Raycaster } from 'three';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import { Mesh, Vector3, Vector2, Raycaster } from 'three';
 import * as THREE from 'three';
-import { VertexInteractionProps } from './types';
 
-// Add or update these functions in the useVertexInteraction hook
-export const useVertexInteraction = ({
-  noseMesh,
-  noseVertices,
-  isEditMode,
-  camera,
-  scene
-}: VertexInteractionProps) => {
+interface VertexInteractionProps {
+  noseMesh: Mesh | null;
+  noseVertices: number[];
+  isEditMode: boolean;
+  camera?: THREE.Camera;
+  scene?: THREE.Scene;
+}
+
+interface NoseEditorInterface {
+  selectedVertex: number | null;
+  setSelectedVertex: (index: number | null) => void;
+  handleMouseDown: (event: MouseEvent) => void;
+  handleMouseUp: () => void;
+}
+
+export const useVertexInteraction = (props: VertexInteractionProps): NoseEditorInterface => {
+  const { noseMesh, noseVertices, isEditMode, camera, scene } = props;
   const [selectedVertex, setSelectedVertex] = useState<number | null>(null);
-  
-  // Highlight the selected vertex
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Function to highlight the selected vertex
   const highlightSelectedVertex = useCallback((vertexIndex: number) => {
     if (!scene || !noseMesh) return;
     
-    // Remove any existing highlight
-    const existingHighlight = scene.getObjectByName('selectedVertexHighlight');
-    if (existingHighlight) scene.remove(existingHighlight);
-    
-    // Get the position of the selected vertex
-    const positions = noseMesh.geometry.attributes.position;
-    const x = positions.getX(vertexIndex);
-    const y = positions.getY(vertexIndex);
-    const z = positions.getZ(vertexIndex);
-    
-    // Create a larger, brighter highlight for the selected vertex
-    const box = new THREE.Box3().setFromObject(noseMesh);
-    const size = box.getSize(new Vector3());
-    const highlightSize = Math.min(size.x, size.y, size.z) * 0.01; // Larger than regular markers
-    
-    const highlight = new THREE.Mesh(
-      new THREE.SphereGeometry(highlightSize),
-      new THREE.MeshBasicMaterial({ 
-        color: 0xffff00, // Yellow for better visibility
-        transparent: true,
-        opacity: 0.9
-      })
-    );
-    
-    highlight.name = 'selectedVertexHighlight';
-    highlight.position.set(x, y, z);
-    highlight.position.applyMatrix4(noseMesh.matrixWorld);
-    
-    scene.add(highlight);
-  }, [scene, noseMesh]);
-  
-  // Handle mouse movement for dragging
-  // In the handleMouseMove function, let's update the vertex movement logic to affect surrounding vertices
-  
-  const handleMouseMove = useCallback((event: MouseEvent) => {
-    if (selectedVertex === null || !noseMesh || !camera) {
-      console.log('VertexInteraction: handleMouseMove - missing required elements');
+    // Remove any existing highlight markers
+    const existingMarker = scene.getObjectByName(`vertexMarker-${vertexIndex}`);
+    if (existingMarker) {
+      existingMarker.visible = true;
       return;
     }
+    
+    // Create a small sphere to mark the selected vertex
+    const geometry = new THREE.SphereGeometry(0.02, 16, 16);
+    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const marker = new THREE.Mesh(geometry, material);
+    
+    // Set the marker position to the vertex position
+    const position = noseMesh.geometry.attributes.position;
+    const vertexPosition = new THREE.Vector3(
+      position.getX(vertexIndex),
+      position.getY(vertexIndex),
+      position.getZ(vertexIndex)
+    );
+    
+    marker.position.copy(vertexPosition);
+    marker.position.applyMatrix4(noseMesh.matrixWorld);
+    marker.name = `vertexMarker-${vertexIndex}`;
+    marker.userData.vertexIndex = vertexIndex;
+    
+    scene.add(marker);
+  }, [scene, noseMesh]);
+
+  // Handle mouse up event
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+    setSelectedVertex(null);
+  }, []);
+
+  // Handle mouse move event
+  const handleMouseMove = useCallback((event: MouseEvent) => {
+    if (!isDragging || !selectedVertex || !noseMesh || !camera) return;
     
     console.log('VertexInteraction: handleMouseMove - dragging vertex', selectedVertex);
     
@@ -69,15 +76,14 @@ export const useVertexInteraction = ({
     const rect = canvas.getBoundingClientRect();
     
     // Calculate mouse position in normalized device coordinates
-    const mouse = new Vector3(
+    const mouse = new THREE.Vector2(
       ((event.clientX - rect.left) / rect.width) * 2 - 1,
-      -((event.clientY - rect.top) / rect.height) * 2 + 1,
-      0.5
+      -((event.clientY - rect.top) / rect.height) * 2 + 1
     );
     
     // Create a raycaster
     const raycaster = new Raycaster();
-    raycaster.setFromCamera(mouse, camera);
+    raycaster.setFromCamera(mouse as Vector2, camera);
     
     // Calculate the ray's direction vector
     const rayDirection = new Vector3();
@@ -231,38 +237,18 @@ export const useVertexInteraction = ({
         scene.userData.needsUpdate = true;
       }
     }
-  }, [selectedVertex, noseMesh, camera, highlightSelectedVertex, noseVertices, scene]);
+  }, [selectedVertex, noseMesh, camera, isDragging, noseVertices, scene]);
   
-  // Handle mouse up event
-  const handleMouseUp = useCallback(() => {
-    // Remove event listeners
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-    
-    // Keep the vertex selected but stop dragging
-    console.log('VertexInteraction: Drag ended for vertex', selectedVertex);
-    
-    // Make sure to update the geometry
-    if (noseMesh) {
-      // Ensure position updates are applied
-      noseMesh.geometry.attributes.position.needsUpdate = true;
-      
-      // Recompute normals for proper lighting
-      noseMesh.geometry.computeVertexNormals();
-      
-      // Force a render update if in a scene
-      if (scene?.userData.needsUpdate !== undefined) {
-        scene.userData.needsUpdate = true;
-      }
+  // Separate effect to handle the highlighting to break circular dependency
+  useEffect(() => {
+    if (selectedVertex !== null && noseMesh && scene) {
+      highlightSelectedVertex(selectedVertex);
     }
-  }, [handleMouseMove, selectedVertex, noseMesh, scene]);
-  
-  // Handle mouse interaction for vertex selection
+  }, [selectedVertex, noseMesh, scene, highlightSelectedVertex]);
+
+  // Handle mouse down event
   const handleMouseDown = useCallback((event: MouseEvent) => {
-    if (!isEditMode || !noseMesh || !camera || !scene) {
-      console.warn('VertexInteraction: Cannot handle mouse down - missing dependencies');
-      return;
-    }
+    if (!isEditMode || !noseMesh || !camera || !scene) return;
     
     console.log('VertexInteraction: Mouse down event detected');
     
@@ -278,7 +264,7 @@ export const useVertexInteraction = ({
     
     // Raycasting to find intersected objects
     const raycaster = new Raycaster();
-    raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), camera);
+    raycaster.setFromCamera(new Vector2(mouseX, mouseY), camera);
     
     // First, check if we hit any of the vertex markers directly
     const markerObjects = scene.children.filter(child => 
@@ -297,6 +283,7 @@ export const useVertexInteraction = ({
       
       console.log(`VertexInteraction: Selected vertex ${vertexIndex} via marker`);
       setSelectedVertex(vertexIndex);
+      setIsDragging(true);
       
       // Highlight the selected vertex
       highlightSelectedVertex(vertexIndex);
@@ -346,6 +333,7 @@ export const useVertexInteraction = ({
         if (closestVertex !== -1 && minDistance < selectionThreshold) {
           console.log(`VertexInteraction: Selected vertex ${closestVertex} at distance ${minDistance}`);
           setSelectedVertex(closestVertex);
+          setIsDragging(true);
           
           // Highlight the selected vertex
           highlightSelectedVertex(closestVertex);
@@ -358,80 +346,44 @@ export const useVertexInteraction = ({
         }
       }
     }
-  }, [isEditMode, noseMesh, camera, scene, noseVertices, setSelectedVertex, handleMouseMove, handleMouseUp, highlightSelectedVertex]);
+  }, [isEditMode, noseMesh, camera, scene, noseVertices, setSelectedVertex, highlightSelectedVertex]);
   
-  return {
-    selectedVertex,
-    setSelectedVertex,
-    handleMouseDown
-  };
-  
-  // Fix the useEffect at the end of the component to properly expose the functions
-  
-  // Make sure these functions are properly exposed
+  // Add and remove event listeners
   useEffect(() => {
     if (isEditMode && noseMesh) {
-      // Expose the vertex interaction functions globally
-      // @ts-ignore
-      window.noseEditor = {
-        ...window.noseEditor,
-        handleMouseDown: (x: number, y: number) => {
-          console.log('VertexInteraction: handleMouseDown called with', x, y);
-          
-          // Create a synthetic mouse event with the coordinates
-          const canvas = camera?.userData.canvas;
-          if (!canvas || !camera) {
-            console.error('VertexInteraction: Missing canvas or camera');
-            return;
-          }
-          
-          // Create a synthetic event object
-          const syntheticEvent = {
-            clientX: x,
-            clientY: y,
-            target: canvas
-          } as unknown as MouseEvent;
-          
-          // Call the actual handler
-          handleMouseDown(syntheticEvent);
-          
-          // Add mouse move and mouse up listeners
-          document.addEventListener('mousemove', handleMouseMove);
-          document.addEventListener('mouseup', handleMouseUp);
-        },
-        handleMouseMove: (x: number, y: number) => {
-          console.log('VertexInteraction: handleMouseMove called with', x, y);
-          
-          // Create a synthetic mouse event
-          const syntheticEvent = {
-            clientX: x,
-            clientY: y,
-            target: camera?.userData.canvas
-          } as unknown as MouseEvent;
-          
-          // Call the actual handler
-          handleMouseMove(syntheticEvent);
-        },
-        handleMouseUp: () => {
-          console.log('VertexInteraction: handleMouseUp called');
-          handleMouseUp();
+      const canvas = document.querySelector('canvas');
+      if (canvas) {
+        canvas.addEventListener('mousedown', handleMouseDown);
+        
+        // We don't need to add these listeners here as they're added dynamically when needed
+        // in the handleMouseDown function and removed in handleMouseUp
+        // canvas.addEventListener('mousemove', handleMouseMove);
+        // canvas.addEventListener('mouseup', handleMouseUp);
+      }
+  
+      return () => {
+        const canvas = document.querySelector('canvas');
+        if (canvas) {
+          canvas.removeEventListener('mousedown', handleMouseDown);
+          document.removeEventListener('mousemove', handleMouseMove);
+          document.removeEventListener('mouseup', handleMouseUp);
         }
       };
     }
-    
+  }, [isEditMode, noseMesh, handleMouseDown, handleMouseMove, handleMouseUp]);
+  
+  // This effect ensures we clean up event listeners when the component unmounts
+  useEffect(() => {
     return () => {
-      // Clean up
-      if (isEditMode) {
-        // @ts-ignore
-        if (window.noseEditor) {
-          // @ts-ignore
-          delete window.noseEditor.handleMouseDown;
-          // @ts-ignore
-          delete window.noseEditor.handleMouseMove;
-          // @ts-ignore
-          delete window.noseEditor.handleMouseUp;
-        }
-      }
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isEditMode, noseMesh, camera, scene, handleMouseDown, handleMouseMove, handleMouseUp]);
+  }, [handleMouseMove, handleMouseUp]);
+
+  return {
+    selectedVertex,
+    setSelectedVertex,
+    handleMouseDown,
+    handleMouseUp
+  };
 };

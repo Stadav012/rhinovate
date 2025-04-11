@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Grid, Environment } from '@react-three/drei';
-import { Group, Mesh, MeshStandardMaterial, BufferGeometry, Box3, Vector3 } from 'three';
+import { Group, Mesh, MeshStandardMaterial, BufferGeometry, Box3, Vector3, PerspectiveCamera as ThreePerspectiveCamera } from 'three';
 import NoseEditor from './NoseEditor';
 import NoseEditorControls from './NoseEditorControls';
 
@@ -16,9 +16,6 @@ const NoseEditorWrapper = ({ model, isEditMode, setNoseEditorFunctions }: {
   setNoseEditorFunctions: (functions: any) => void
 }) => {
   const { camera, scene } = useThree();
-  
-  // This is likely the issue - NoseEditor doesn't return functions directly
-  // Instead, we should access the functions from window.noseEditor
   
   useEffect(() => {
     // Wait for the NoseEditor to initialize and expose its functions
@@ -46,7 +43,6 @@ const NoseEditorWrapper = ({ model, isEditMode, setNoseEditorFunctions }: {
     };
   }, [setNoseEditorFunctions]);
   
-  // Render the NoseEditor component
   return (
     <NoseEditor 
       model={model} 
@@ -63,7 +59,7 @@ const SceneSetup = ({ model, isEditMode }: { model: Group | null, isEditMode: bo
   const controlsRef = useRef<any>(null);
   
   useEffect(() => {
-    if (model) {
+    if (model && camera instanceof ThreePerspectiveCamera) {
       // Center and scale the model
       const box = new Box3().setFromObject(model);
       const center = box.getCenter(new Vector3());
@@ -84,42 +80,23 @@ const SceneSetup = ({ model, isEditMode }: { model: Group | null, isEditMode: bo
     }
   }, [model, camera]);
   
-  // In the SceneSetup component, let's modify the orbit controls behavior
-  // Instead of completely disabling controls in edit mode, let's just disable rotation
-  
-  // Disable orbit controls when in edit mode
   useEffect(() => {
     if (controlsRef.current) {
-      // Instead of completely disabling controls, just disable rotation in edit mode
-      // This allows zooming and panning even in edit mode
-      controlsRef.current.enabled = true; // Always enabled
-      controlsRef.current.enableRotate = !isEditMode; // Only disable rotation in edit mode
+      controlsRef.current.enabled = true;
+      controlsRef.current.enableRotate = !isEditMode;
       
-      // Adjust other control settings based on edit mode
       if (isEditMode) {
-        // In edit mode, allow panning and zooming for better vertex manipulation
         controlsRef.current.enablePan = true;
         controlsRef.current.enableZoom = true;
-        controlsRef.current.dampingFactor = 0.1; // Smoother damping in edit mode
+        controlsRef.current.dampingFactor = 0.1;
       } else {
-        // In view mode, use default settings
         controlsRef.current.enablePan = true;
         controlsRef.current.enableZoom = true;
         controlsRef.current.dampingFactor = 0.05;
       }
     }
   }, [isEditMode]);
-  
-  // Then in the OrbitControls component, add these additional props
-  <OrbitControls 
-    ref={controlsRef} 
-    makeDefault 
-    enableDamping 
-    dampingFactor={0.05}
-    minDistance={1} // Prevent zooming too close
-    maxDistance={20} // Prevent zooming too far
-  />
-  
+
   return (
     <>
       <ambientLight intensity={0.5} />

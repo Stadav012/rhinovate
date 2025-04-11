@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { Group, Mesh, BufferGeometry, Vector3, Raycaster } from 'three';
+import { Group, Mesh, BufferGeometry, Vector3, Vector2, Raycaster } from 'three';
 import * as THREE from 'three';
 import { useNoseVertexDetector } from './NoseVertexDetector';
 import { useNoseAdjustments } from './NoseAdjustments';
@@ -168,15 +168,17 @@ const NoseEditor = ({ model, isEditMode, camera, scene }: NoseEditorProps) => {
     const rect = canvas.getBoundingClientRect();
     
     // Calculate mouse position in normalized device coordinates
-    const mouse = new Vector3(
+    const mousePosition = new Vector3(
       ((event.clientX - rect.left) / rect.width) * 2 - 1,
       -((event.clientY - rect.top) / rect.height) * 2 + 1,
-      0.5
+      0
     );
     
     // Create a raycaster
     const raycaster = new Raycaster();
-    raycaster.setFromCamera(mouse, camera);
+    if (camera) {
+      raycaster.setFromCamera(new Vector2(mousePosition.x, mousePosition.y), camera);
+    }
     
     // Calculate the ray's direction vector
     const rayDirection = new Vector3();
@@ -214,6 +216,11 @@ const NoseEditor = ({ model, isEditMode, camera, scene }: NoseEditorProps) => {
     positions.setXYZ(selectedVertex, localTargetPosition.x, localTargetPosition.y, localTargetPosition.z);
     positions.needsUpdate = true;
     
+    // Get model dimensions for better scaling
+    const box = new THREE.Box3().setFromObject(noseMeshRef.current);
+    const size = box.getSize(new Vector3());
+    const center = box.getCenter(new Vector3());
+
     // ENHANCED ANATOMICAL DEFORMATION
     // Use dynamic falloff radius based on model size for more appropriate influence area
     const modelSize = Math.max(size.x, size.y, size.z);
@@ -227,11 +234,6 @@ const NoseEditor = ({ model, isEditMode, camera, scene }: NoseEditorProps) => {
     // Log the movement for debugging
     console.log('DEBUGGING: Movement vector:', moveVector, 'with magnitude:', moveVector.length());
     console.log('DEBUGGING: Using falloff radius:', falloffRadius, 'for model size:', modelSize);
-    
-    // Get model dimensions for better scaling
-    const box = new THREE.Box3().setFromObject(noseMeshRef.current);
-    const size = box.getSize(new Vector3());
-    const center = box.getCenter(new Vector3());
     
     // Add tension forces to maintain structural integrity
     const tensionFactor = 0.7; // Controls how much the structure resists deformation
@@ -509,7 +511,9 @@ const NoseEditor = ({ model, isEditMode, camera, scene }: NoseEditorProps) => {
       const marker = scene.getObjectByName(`vertexMarker-${selectedVertex}`);
       if (marker) {
         marker.position.copy(localTargetPosition);
-        marker.position.applyMatrix4(noseMeshRef.current.matrixWorld);
+        if (noseMeshRef.current) {
+          marker.position.applyMatrix4(noseMeshRef.current.matrixWorld);
+        }
       }
     }
     
@@ -585,10 +589,9 @@ const NoseEditor = ({ model, isEditMode, camera, scene }: NoseEditorProps) => {
     const rect = canvas.getBoundingClientRect();
     
     // Calculate mouse position in normalized device coordinates
-    const mouse = new Vector3(
+    const mouse = new Vector2(
       ((event.clientX - rect.left) / rect.width) * 2 - 1,
-      -((event.clientY - rect.top) / rect.height) * 2 + 1,
-      0.5
+      -((event.clientY - rect.top) / rect.height) * 2 + 1
     );
     
     console.log('DEBUGGING: Mouse click at NDC:', mouse);
@@ -917,7 +920,9 @@ const NoseEditor = ({ model, isEditMode, camera, scene }: NoseEditorProps) => {
         marker.userData.label = point.label;
         
         marker.position.copy(point.vertex.position);
-        marker.position.applyMatrix4(noseMeshRef.current.matrixWorld);
+        if (noseMeshRef.current) {
+          marker.position.applyMatrix4(noseMeshRef.current.matrixWorld);
+        }
         
         marker.renderOrder = 10001;
         

@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import * as THREE from 'three';
 import NoseEditor from './nose/NoseEditor';
 import MarkerDensityControl from './ui/MarkerDensityControl';
 import './SceneViewer.css';
 
-const SceneViewer = ({ model, isEditMode, camera, scene }) => {
+interface SceneViewerProps {
+  model: THREE.Group | null;
+  isEditMode: boolean;
+  camera: THREE.Camera;
+  scene: THREE.Scene;
+}
+
+const SceneViewer = ({ model, isEditMode, camera, scene }: SceneViewerProps) => {
   // Force the marker density control to be visible in edit mode
   const [showControls, setShowControls] = useState(false);
   
